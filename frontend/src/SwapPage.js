@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ethers } from 'ethers';
 
 const ALCHEMY_URL = `https://eth-mainnet.g.alchemy.com/v2/${process.env.REACT_APP_ALCHEMY_KEY}`;
@@ -94,7 +94,8 @@ function SwapPage() {
   const [customError, setCustomError]         = useState('');
   const quoteTimer = useRef(null);
 
-  const allTokens = { ...TOKENS, ...customTokens };
+  // ── FIX: memoize allTokens so it has a stable reference ──────────────────
+  const allTokens = useMemo(() => ({ ...TOKENS, ...customTokens }), [customTokens]);
 
   // ── Fetch balances ──────────────────────────────────────────────────────────
   const fetchBalances = useCallback(async (w, prov) => {
@@ -201,7 +202,7 @@ function SwapPage() {
         setQuoteFetching(false);
       }
     }, 600);
-  }, [amount, fromToken, toToken]);
+  }, [amount, fromToken, toToken, allTokens]); // ── FIX: allTokens added here
 
   // ── Execute swap ────────────────────────────────────────────────────────────
   const executeSwap = async () => {
