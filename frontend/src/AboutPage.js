@@ -3,14 +3,18 @@ import React from 'react';
 function AboutPage() {
   return (
     <div style={{
-      padding: '2rem',
+      padding: 'clamp(1rem, 4vw, 2rem)',
       fontFamily: 'Arial, sans-serif',
       maxWidth: '600px',
+      width: '100%',
+      boxSizing: 'border-box',
       margin: '0 auto',
       background: '#fff9f9',
       borderRadius: '16px',
       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
       textAlign: 'left',
+      wordWrap: 'normal',
+      wordBreak: 'normal',
     }}>
       <h1 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '0.5rem' }}>
         🐶 About Puppy Wallet

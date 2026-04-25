@@ -1,0 +1,78 @@
+"Please make the following updates to Puppy Wallet:
+1. Favicon
+
+Create public/favicon.svg — SVG favicon with PW in Courier New, white text on black background
+Update public/index.html to reference it: <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+2. OG Image — create public/og-image.html at 1200x630px with black background (#080808), then auto-screenshot it to public/og-image.png using chromium headless or puppeteer.
+Use exactly these two ASCII assets:
+WORDMARK (color #e2e2e2, font-size 14px, Courier New):
+
+   ___                        _      __     ____    __    
+  / _ \__ _____  ___  __ __  | | /| / /__ _/ / /__ / /_   
+ / ___/ // / _ \/ _ \/ // /  | |/ |/ / _ `/ / / -_) __/   
+/_/   \_,_/ .__/ .__/\_, /   |__/|__/\_,_/_/_/\__/\__/    
+         /_/  /_/   /___/
+
+
+PUPPY ART (color #d0d0d0, font-size 8px, Courier New):
+
++++                          
+                          ++                       +====*             
+                         +++++*                  +=----=+*            
+                        +++====+*         -     +=--=++-=*            
+                        +++++=--=****++++++++**#==-=**=:-*+           
+                        +==+*#=-=**++++++*+++++++#+*#+-:-+            
+                        +=-=+#*=+++++++++*+++++++++#*+--=+            
+                         =-=++*+====+++****++++++++===-:=+            
+                         =---+==+===+*++***+*==++++++=++++            
+                          =+===++**+::=*+***--*-=**++==++=            
+                          =====++--*=--==+====@@%+*#+---=+            
+                         -=::::=+#%@%#=======*%@@=+-:.::=+            
+                         =-:...:-:::====+=++=+*==+=::.::-+-           
+                         =-......::-=---===---=*=::-::::-+-           
+                         =-.......:--::%%*#@%--++-----::=+            
+                          =::..::..::..*%@@%=:-==-==-::=+-            
+                          -=:..:.=+::.:=*#**+-==*%=---=+=             
+                          -++-...::#%##@@@@@@%@@*-----+*=             
+                          -+++-:...::*#-==+++#%=----=+##*-            
+                         -=-=+++-:..:-:#---=*#--=--=+##**=            
+                         -=----===-:::------==-====+*##*++-           
+                         -==-:::--=--::---=======+++##*+++-           
+                         *++=-::::--:::::---======+**+==+*=           
+                        ++==++=-:---::::::----===+*++++#**+           
+                       +*+---------:--:::::::---====**++==+           
+                      -*+=-:..::::::::::.:::::-----=------+-          
+                      **+==-:...:::::::...::::::-=-:-:::--+-          
+                     +**+++-:..:.:..:.:.....:::--:::::-:-+=           
+                   -+***+=====:..::.::::::::::-:-::::::=+*+           
+                 ---+**++===----=--:.:::::::::--:-:-=**++*+           
+                --::+**++==---=--:::-::.::::------=---++*++           
+                =-::-*+++======-----:--::::::----------=+*+           
+               ==-:::=*+++-====-------::::::---=-::---===+=           
+               ++==:::+*++-=====---:=+-::::----+:..:-====+            
+               =+===-::=*+=---==---:=+=-----==++...:--===+            
+                +*++==-:==+--------:-#*+++=+++*#-.:----==+-+=++=--    
+                 ++*#*+=-=+----------########*++*.:-----=+%%%##***+=   
+                  =+=+=*#=-:::-------==++**++****.::-----#@@%%%##**+-- 
+                  -:::+=*+:::--===--=###*##%#%%%%.:------*@@@@@@%%#*+- 
+                 -=*#+*+%%*---===---+@@   %    @@::-------%%   %       
+                          :-:-::+:=:-            -:-::::=:--           
+                          =***+*+*=#+            --*=+-*+*=*
+
+
+
+TAGLINE (color #555, font-size 11px, letter-spacing 0.3em, uppercase, Courier New):
+ETHEREUM · NO EXTENSION · NO CUSTODIAN
+Layout: wordmark centered near top, puppy art centered in middle, tagline centered near bottom. All on #080808 background.
+3. SEO meta tags — add to public/index.html <head>:
+
+Title: Puppy Wallet — Ethereum Wallet Without MetaMask
+Description: Send ETH, swap tokens, and manage your Ethereum wallet directly in your browser. No MetaMask or browser extension required.
+Keywords: ethereum wallet no metamask, browser ethereum wallet, send ETH without extension, uniswap without metamask
+Full Open Graph tags: title, description, url https://puppywallet.xyz, image https://puppywallet.xyz/og-image.png, type website
+Twitter Card: summary_large_image, title, description, image
+
+4. Create public/sitemap.xml with homepage and /swap, changefreq weekly
+5. Create public/robots.txt allowing all crawlers, pointing to https://puppywallet.xyz/sitemap.xml
+After all changes, list everything created or modified and remind me to submit the sitemap to Google Search Console."
