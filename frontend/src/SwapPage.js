@@ -309,7 +309,7 @@ function SwapPage() {
 
   // ── Styles ──────────────────────────────────────────────────────────────────
   const card = {
-    padding: '2rem', fontFamily: "'Comic Sans MS', cursive", maxWidth: '500px',
+    padding: '2rem', fontFamily: 'Arial, sans-serif', maxWidth: '500px',
     margin: '0 auto', background: '#fff9f9', borderRadius: '16px',
     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
   };
