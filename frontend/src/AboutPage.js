@@ -13,8 +13,10 @@ function AboutPage() {
       borderRadius: '16px',
       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
       textAlign: 'left',
-      wordWrap: 'normal',
+      overflowWrap: 'break-word',
+      wordWrap: 'break-word',
       wordBreak: 'normal',
+      whiteSpace: 'normal',
     }}>
       <h1 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '0.5rem' }}>
         🐶 About Puppy Wallet
