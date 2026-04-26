@@ -1,38 +1,54 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import WalletGenerator from './WalletGenerator';
 import WalletPage from './WalletPage';
 import SwapPage from './SwapPage';
 import AboutPage from './AboutPage';
+import './App.css';
 
 const wordmark = `   ___                        _      __     ____    __
   / _ \\__ _____  ___  __ __  | | /| / /__ _/ / /__ / /_
  / ___/ // / _ \\/ _ \\/ // /  | |/ |/ / _ \`/ / / -_) __/
 /_/   \\_,_/ .__/ .__/\\_, /   |__/|__/\\_,_/_/_/\\__/\\__/
-         /_/  /_/   /___/                               `;
+         /_/  /_/   /___/`;
 
 function App() {
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('pw-theme');
+    return saved ? saved === 'dark' : true;
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.body.classList.remove('light');
+    } else {
+      document.body.classList.add('light');
+    }
+    localStorage.setItem('pw-theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
   return (
     <Router>
-      <div className="App" style={{ padding: '20px', maxWidth: '100vw', overflowX: 'hidden', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', overflowX: 'auto' }}>
-          <pre style={{
-            fontFamily: "'Courier New', monospace",
-            color: '#444444',
-            fontSize: 'clamp(6px, 1.5vw, 11px)',
-            whiteSpace: 'pre',
-            textAlign: 'left',
-            background: 'transparent',
-            border: 'none',
-            margin: 0,
-            padding: 0,
-          }}>{wordmark}</pre>
+      <div className="screen scanlines">
+        <div className="wordmark-container">
+          <pre className="wordmark">{wordmark}</pre>
         </div>
-        <nav style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center', gap: '20px' }}>
-          <Link to="/">🐶 Create Wallet</Link>
-          <Link to="/wallet">🔐 Access Wallet</Link>
-          <Link to="/swap">🔄 Swap</Link>
-          <Link to="/about">📖 About</Link>
+
+        <div className="divider">+────────────────────────────────────────────────────+</div>
+
+        <nav className="nav">
+          <div className="nav-left" />
+          <div className="nav-links">
+            <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>[ create ]</NavLink>
+            <NavLink to="/wallet" className={({ isActive }) => isActive ? 'active' : ''}>[ access ]</NavLink>
+            <NavLink to="/swap" className={({ isActive }) => isActive ? 'active' : ''}>[ swap ]</NavLink>
+            <NavLink to="/about" className={({ isActive }) => isActive ? 'active' : ''}>[ about ]</NavLink>
+          </div>
+          <div className="nav-right">
+            <button className="btn nav-toggle" onClick={() => setIsDark(v => !v)}>
+              {isDark ? '[ light ]' : '[ dark ]'}
+            </button>
+          </div>
         </nav>
 
         <Routes>
@@ -41,6 +57,10 @@ function App() {
           <Route path="/swap" element={<SwapPage />} />
           <Route path="/about" element={<AboutPage />} />
         </Routes>
+
+        <div className="footer">
+          puppywallet.xyz · agpl-3.0 · no keys stored · ever
+        </div>
       </div>
     </Router>
   );

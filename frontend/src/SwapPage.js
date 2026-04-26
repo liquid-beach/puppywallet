@@ -44,13 +44,11 @@ const QUOTER_ABI = [
   'function quoteExactInputSingle(address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint160 sqrtPriceLimitX96) external returns (uint256 amountOut)',
 ];
 
-// Try V3 across all fee tiers, then fall back to V2
 async function fetchUniswapQuote(fromToken, toToken, amountWei) {
   const provider = new ethers.JsonRpcProvider(ALCHEMY_URL);
   const tokenIn  = fromToken.address === 'ETH' ? WETH_ADDRESS : fromToken.address;
   const tokenOut = toToken.address   === 'ETH' ? WETH_ADDRESS : toToken.address;
 
-  // V3: try 0.3%, 1%, 0.05%
   const quoter = new ethers.Contract(QUOTER_ADDRESS, QUOTER_ABI, provider);
   for (const fee of [3000, 10000, 500]) {
     try {
@@ -63,7 +61,6 @@ async function fetchUniswapQuote(fromToken, toToken, amountWei) {
     } catch { continue; }
   }
 
-  // V2 fallback
   try {
     const v2Router = new ethers.Contract(V2_ROUTER, V2_ROUTER_ABI, provider);
     const amounts = await v2Router.getAmountsOut(amountWei, [tokenIn, tokenOut]);
@@ -94,10 +91,8 @@ function SwapPage() {
   const [customError, setCustomError]         = useState('');
   const quoteTimer = useRef(null);
 
-  // ── FIX: memoize allTokens so it has a stable reference ──────────────────
   const allTokens = useMemo(() => ({ ...TOKENS, ...customTokens }), [customTokens]);
 
-  // ── Fetch balances ──────────────────────────────────────────────────────────
   const fetchBalances = useCallback(async (w, prov) => {
     if (!w || !prov) return;
     setBalanceFetching(true);
@@ -124,32 +119,30 @@ function SwapPage() {
     }
   }, [customTokens]);
 
-  // ── Connect wallet ──────────────────────────────────────────────────────────
   const connectWallet = async () => {
     try {
       let key = privateKey.trim();
       if (key.startsWith('0x')) key = key.slice(2);
       if (!key.match(/^[0-9a-fA-F]{64}$/)) {
-        setStatus('❌ Invalid private key (must be 64 hex chars).');
+        setStatus('❌ invalid private key (must be 64 hex chars).');
         return;
       }
       const prov = new ethers.JsonRpcProvider(ALCHEMY_URL);
       const connected = new ethers.Wallet('0x' + key, prov);
       setWallet(connected);
       setProvider(prov);
-      setStatus('✅ Wallet connected: ' + connected.address);
+      setStatus('✅ wallet connected: ' + connected.address);
       fetchBalances(connected, prov);
     } catch (err) {
       setStatus('❌ ' + err.message);
     }
   };
 
-  // ── Add custom token ────────────────────────────────────────────────────────
   const addCustomToken = async () => {
     setCustomError('');
     const addr = customToken.trim();
-    if (!ethers.isAddress(addr)) { setCustomError('❌ Invalid address'); return; }
-    if (!provider) { setCustomError('❌ Connect wallet first'); return; }
+    if (!ethers.isAddress(addr)) { setCustomError('invalid address'); return; }
+    if (!provider) { setCustomError('connect wallet first'); return; }
     try {
       const contract = new ethers.Contract(addr, ERC20_ABI, provider);
       const [sym, dec, nam] = await Promise.all([
@@ -164,11 +157,10 @@ function SwapPage() {
         setBalances(prev => ({ ...prev, [key]: ethers.formatUnits(bal, Number(dec)) }));
       }
     } catch (e) {
-      setCustomError('❌ Could not load token: ' + e.message);
+      setCustomError('could not load token: ' + e.message);
     }
   };
 
-  // ── Live quote ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (quoteTimer.current) clearTimeout(quoteTimer.current);
     setQuote(null);
@@ -196,19 +188,18 @@ function SwapPage() {
             version: result.version,
           });
         } else {
-          setQuote({ error: 'Quote unavailable — no liquidity pool found for this pair' });
+          setQuote({ error: 'no liquidity pool found for this pair' });
         }
       } finally {
         setQuoteFetching(false);
       }
     }, 600);
-  }, [amount, fromToken, toToken, allTokens]); // ── FIX: allTokens added here
+  }, [amount, fromToken, toToken, allTokens]);
 
-  // ── Execute swap ────────────────────────────────────────────────────────────
   const executeSwap = async () => {
-    if (!wallet) { setStatus('❌ Connect your wallet first.'); return; }
-    if (!amount || isNaN(amount) || Number(amount) <= 0) { setStatus('❌ Enter a valid amount.'); return; }
-    if (fromToken === toToken) { setStatus('❌ Select different tokens.'); return; }
+    if (!wallet) { setStatus('❌ connect your wallet first.'); return; }
+    if (!amount || isNaN(amount) || Number(amount) <= 0) { setStatus('❌ enter a valid amount.'); return; }
+    if (fromToken === toToken) { setStatus('❌ select different tokens.'); return; }
 
     try {
       setIsLoading(true);
@@ -226,20 +217,18 @@ function SwapPage() {
       const feeAmount   = totalAmount / 100n;
       const swapAmount  = totalAmount - feeAmount;
 
-      // Find best route
-      setStatus('⏳ Finding best pool...');
+      setStatus('⏳ finding best pool...');
       const quoteResult = await fetchUniswapQuote(from, to, swapAmount);
       if (!quoteResult) {
-        setStatus('❌ No liquidity pool found for this pair.');
+        setStatus('❌ no liquidity pool found for this pair.');
         setIsLoading(false);
         return;
       }
 
-      const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 min
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
 
-      // Handle fee + approval for ERC20 input
       if (!isETHIn) {
-        setStatus('⏳ Approving token...');
+        setStatus('⏳ approving token...');
         const tokenContract = new ethers.Contract(from.address, ERC20_ABI, signer);
         const spender = quoteResult.version === 'v2' ? V2_ROUTER_ADDRESS : SWAP_ROUTER_ADDRESS;
         const allowance = await tokenContract.allowance(signer.address, spender);
@@ -247,12 +236,12 @@ function SwapPage() {
           const approveTx = await tokenContract.approve(spender, ethers.MaxUint256);
           await approveTx.wait();
         }
-        setStatus('⏳ Sending fee...');
+        setStatus('⏳ sending fee...');
         const feeTx = await tokenContract.transfer(FEE_RECIPIENT, feeAmount);
         await feeTx.wait();
       }
 
-      setStatus(`⏳ Executing swap via Uniswap ${quoteResult.version.toUpperCase()}...`);
+      setStatus(`⏳ executing swap via uniswap ${quoteResult.version.toUpperCase()}...`);
 
       let txResponse;
 
@@ -261,7 +250,6 @@ function SwapPage() {
         const path = [tokenIn, tokenOut];
 
         if (isETHIn) {
-          // Send ETH fee first
           await signer.sendTransaction({ to: FEE_RECIPIENT, value: feeAmount });
           txResponse = await v2Router.swapExactETHForTokens(
             0, path, signer.address, deadline, { value: swapAmount, gasLimit: 300000 }
@@ -276,7 +264,6 @@ function SwapPage() {
           );
         }
       } else {
-        // V3
         const v3Router = new ethers.Contract(SWAP_ROUTER_ADDRESS, V3_ROUTER_ABI, signer);
         const params = {
           tokenIn, tokenOut,
@@ -295,50 +282,18 @@ function SwapPage() {
         }
       }
 
-      setStatus('⏳ Waiting for confirmation...');
+      setStatus('⏳ waiting for confirmation...');
       await txResponse.wait();
-      setStatus(`✅ Swapped ${amount} ${fromToken} → ${toToken}!\nTx: ${txResponse.hash}`);
+      setStatus(`✅ swapped ${amount} ${fromToken} → ${toToken}\ntx: ${txResponse.hash}`);
       fetchBalances(wallet, prov);
     } catch (err) {
       console.error(err);
-      setStatus('❌ Swap failed: ' + (err.reason || err.message));
+      setStatus('❌ swap failed: ' + (err.reason || err.message));
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ── Styles ──────────────────────────────────────────────────────────────────
-  const card = {
-    padding: '2rem', fontFamily: 'Arial, sans-serif', maxWidth: '500px',
-    margin: '0 auto', background: '#fff9f9', borderRadius: '16px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-  };
-  const inputStyle = {
-    width: '100%', padding: '12px', fontSize: '15px', border: '2px solid #ccc',
-    borderRadius: '8px', marginBottom: '1rem', boxSizing: 'border-box', fontFamily: 'inherit',
-  };
-  const selectStyle = {
-    width: '100%', padding: '10px', fontSize: '15px', borderRadius: '8px',
-    border: '1px solid #ccc', marginBottom: '0.5rem', backgroundColor: '#fff', fontFamily: 'inherit',
-  };
-  const btnPrimary = {
-    width: '100%', padding: '12px', fontSize: '16px', backgroundColor: '#ffb6b6',
-    border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-    marginBottom: '1rem', fontFamily: 'inherit',
-  };
-  const btnSwap = (disabled) => ({
-    ...btnPrimary,
-    backgroundColor: disabled ? '#ccc' : '#90ee90',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-  });
-  const balancePill = {
-    display: 'inline-block', fontSize: '0.75rem', color: '#888', background: '#f0f0f0',
-    borderRadius: '999px', padding: '2px 10px', marginBottom: '0.4rem', marginLeft: '6px',
-  };
-  const quoteBox = {
-    background: '#fff0f0', borderRadius: '10px', padding: '0.75rem 1rem',
-    marginBottom: '1rem', fontSize: '0.85rem', color: '#555', textAlign: 'center',
-  };
   const formatBal = (key) => {
     const b = balances[key];
     if (b === undefined) return '';
@@ -348,173 +303,179 @@ function SwapPage() {
   };
 
   return (
-    <div style={card}>
-      <h1 style={{ textAlign: 'center', color: '#ff9900', marginTop: 0 }}>🐶 Puppy Swap</h1>
-      <p style={{ textAlign: 'center', fontSize: '0.82rem', color: '#aaa', marginTop: '-0.5rem' }}>
-        Powered by Uniswap v2/v3 · 1% fee supports Puppy Wallet 🐾
-      </p>
+    <div className="page">
+      <div className="section-header">{'// swap tokens · powered by uniswap v2/v3 · 1% fee'}</div>
 
-      {/* ── Private key input ── */}
-      <div style={{ position: 'relative', marginBottom: '1rem' }}>
-        <input
-          type={showKey ? 'text' : 'password'}
-          placeholder="Enter your private key"
-          value={privateKey}
-          onChange={(e) => setPrivateKey(e.target.value)}
-          autoComplete="off"
-          style={{ ...inputStyle, marginBottom: 0, paddingRight: '80px' }}
-        />
-        <button
-          onClick={() => setShowKey(v => !v)}
-          style={{
-            position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
-            background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem',
-            color: '#888', padding: '4px 8px', fontFamily: 'inherit', marginTop: 0,
-          }}
-        >
-          {showKey ? '🙈 Hide' : '👁 Show'}
-        </button>
+      {/* Private key input */}
+      <div className="field-group">
+        <span className="term-label">private key</span>
+        <div className="term-row">
+          <input
+            type={showKey ? 'text' : 'password'}
+            placeholder="enter 64 hex chars..."
+            value={privateKey}
+            onChange={(e) => setPrivateKey(e.target.value)}
+            autoComplete="off"
+            className="term-input"
+          />
+          <button className="btn" onClick={() => setShowKey(v => !v)}>
+            {showKey ? '[ hide ]' : '[ show ]'}
+          </button>
+        </div>
       </div>
 
-      <button onClick={connectWallet} style={btnPrimary}>🔐 Connect Wallet</button>
+      <button className="btn primary btn-full" onClick={connectWallet}>
+        [ connect wallet ]
+      </button>
 
-      {/* ── Balances ── */}
+      {/* Balances */}
       {wallet && (
-        <div style={{
-          background: '#fff0f0', borderRadius: '10px', padding: '0.75rem 1rem',
-          marginBottom: '1rem', fontSize: '0.82rem', color: '#555',
-        }}>
-          <strong>💰 Balances</strong>
+        <div className="term-box" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <span className="term-label">balances</span>
           {balanceFetching
-            ? <p style={{ margin: '0.5rem 0 0', color: '#aaa' }}>Fetching balances...</p>
+            ? <div className="status-line">{'// fetching balances...'}</div>
             : (
-              <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap' }}>
                 {Object.keys(allTokens).map(key => (
-                  <span key={key} style={{
-                    background: '#ffe8e8', borderRadius: '999px', padding: '3px 12px',
-                    fontSize: '0.78rem', color: '#555',
-                  }}>
-                    <strong>{key}</strong> {formatBal(key) || '0'}
+                  <span key={key} className="balance-tag">
+                    {key} {formatBal(key) || '0'}
                   </span>
                 ))}
               </div>
             )
           }
           <button
+            className="btn"
             onClick={() => fetchBalances(wallet, provider)}
-            style={{
-              marginTop: '0.5rem', fontSize: '0.75rem', background: 'none',
-              border: '1px solid #ccc', borderRadius: '6px', padding: '3px 10px',
-              cursor: 'pointer', color: '#888', fontFamily: 'inherit',
-            }}
+            style={{ alignSelf: 'flex-start' }}
           >
-            🔄 Refresh
+            [ refresh ]
           </button>
         </div>
       )}
 
-      {/* ── From ── */}
-      <label><strong>From</strong>
-        {wallet && balances[fromToken] !== undefined && (
-          <span style={balancePill}>Balance: {formatBal(fromToken)} {fromToken}</span>
-        )}
-      </label>
-      <select value={fromToken} onChange={(e) => setFromToken(e.target.value)} style={selectStyle}>
-        {Object.keys(allTokens).map(t => (
-          <option key={t} value={t}>{allTokens[t].symbol} — {allTokens[t].name}</option>
-        ))}
-      </select>
+      {/* From */}
+      <div className="field-group">
+        <span className="term-label">
+          from
+          {wallet && balances[fromToken] !== undefined && (
+            <span style={{ marginLeft: '0.5rem', color: '#333' }}>
+              bal: {formatBal(fromToken)} {fromToken}
+            </span>
+          )}
+        </span>
+        <div className="term-select-wrapper">
+          <select
+            value={fromToken}
+            onChange={(e) => setFromToken(e.target.value)}
+            className="term-select"
+          >
+            {Object.keys(allTokens).map(t => (
+              <option key={t} value={t}>{allTokens[t].symbol} — {allTokens[t].name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-      {/* ── To ── */}
-      <label style={{ marginTop: '0.5rem', display: 'block' }}><strong>To</strong>
-        {wallet && balances[toToken] !== undefined && (
-          <span style={balancePill}>Balance: {formatBal(toToken)} {toToken}</span>
-        )}
-      </label>
-      <select value={toToken} onChange={(e) => setToToken(e.target.value)} style={{ ...selectStyle, marginBottom: '1rem' }}>
-        {Object.keys(allTokens).map(t => (
-          <option key={t} value={t}>{allTokens[t].symbol} — {allTokens[t].name}</option>
-        ))}
-      </select>
+      {/* To */}
+      <div className="field-group">
+        <span className="term-label">
+          to
+          {wallet && balances[toToken] !== undefined && (
+            <span style={{ marginLeft: '0.5rem', color: '#333' }}>
+              bal: {formatBal(toToken)} {toToken}
+            </span>
+          )}
+        </span>
+        <div className="term-select-wrapper">
+          <select
+            value={toToken}
+            onChange={(e) => setToToken(e.target.value)}
+            className="term-select"
+          >
+            {Object.keys(allTokens).map(t => (
+              <option key={t} value={t}>{allTokens[t].symbol} — {allTokens[t].name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-      {/* ── Amount ── */}
-      <input
-        type="text"
-        placeholder={`Amount in ${fromToken}`}
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        style={inputStyle}
-      />
+      {/* Amount */}
+      <div className="field-group">
+        <span className="term-label">amount ({fromToken})</span>
+        <input
+          type="text"
+          placeholder={`0.0 ${fromToken}`}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="term-input"
+        />
+      </div>
 
-      {/* ── Live quote ── */}
+      {/* Live quote */}
       {(quoteFetching || quote) && (
-        <div style={quoteBox}>
-          {quoteFetching && <span>⏳ Fetching live quote...</span>}
+        <div className="quote-box">
+          {quoteFetching && (
+            <div>{'// fetching live quote'} <span className="blink">_</span></div>
+          )}
           {!quoteFetching && quote && !quote.error && (
             <>
-              <div>📊 Estimated output: <strong>{parseFloat(quote.buyAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} {toToken}</strong></div>
+              <div>
+                output: <strong style={{ color: 'var(--fg)' }}>
+                  {parseFloat(quote.buyAmount).toLocaleString(undefined, { maximumFractionDigits: 6 })} {toToken}
+                </strong>
+              </div>
               {quote.price && (
-                <div style={{ marginTop: '4px', color: '#999', fontSize: '0.78rem' }}>
-                  Rate: 1 {fromToken} ≈ {parseFloat(quote.price).toLocaleString(undefined, { maximumFractionDigits: 2 })} {toToken}
+                <div>
+                  rate: 1 {fromToken} ≈ {parseFloat(quote.price).toLocaleString(undefined, { maximumFractionDigits: 4 })} {toToken}
                 </div>
               )}
-              <div style={{ color: '#bbb', fontSize: '0.75rem' }}>
-                Est. gas: {quote.estimatedGas} units · via Uniswap {quote.version?.toUpperCase()}
-              </div>
-              <div style={{ color: '#ffaaaa', fontSize: '0.75rem', marginTop: '4px' }}>
-                🐾 Includes 1% Puppy Wallet fee
-              </div>
+              <div>gas: {quote.estimatedGas} · via uniswap {quote.version?.toUpperCase()}</div>
+              <div style={{ color: 'var(--fg-4)' }}>{'// includes 1% puppy wallet fee'}</div>
             </>
           )}
           {!quoteFetching && quote?.error && (
-            <span style={{ color: '#cc7777' }}>⚠️ {quote.error}</span>
+            <div className="status-line error">{'// '}{quote.error}</div>
           )}
         </div>
       )}
 
-      <button onClick={executeSwap} disabled={isLoading} style={btnSwap(isLoading)}>
-        {isLoading ? '⏳ Swapping...' : '🔄 Swap'}
+      <button
+        className="btn primary btn-full"
+        onClick={executeSwap}
+        disabled={isLoading}
+      >
+        {isLoading ? '[ swapping... ]' : '[ execute swap ]'}
       </button>
 
       {status && (
-        <p style={{
-          textAlign: 'center', fontSize: '0.85rem', color: '#444', wordBreak: 'break-all',
-          background: '#fff0f0', padding: '1rem', borderRadius: '8px', whiteSpace: 'pre-line',
-        }}>
-          {status}
-        </p>
+        <div className="status-line">{status}</div>
       )}
 
-      {/* ── Custom token ── */}
-      <div style={{ marginTop: '1.5rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
-        <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.5rem' }}>
-          ➕ Add any ERC-20 token by contract address:
-        </p>
-        <div style={{ display: 'flex', gap: '8px' }}>
+      <div className="divider" style={{ width: '100%' }}>+────────────────────────+</div>
+
+      {/* Custom token */}
+      <div className="field-group">
+        <span className="term-label">add custom erc-20 token</span>
+        <div className="term-row">
           <input
             type="text"
             placeholder="0x... contract address"
             value={customToken}
             onChange={(e) => setCustomToken(e.target.value)}
-            style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+            className="term-input"
           />
-          <button
-            onClick={addCustomToken}
-            style={{
-              padding: '10px 14px', fontSize: '14px', backgroundColor: '#ffcc00',
-              border: 'none', borderRadius: '8px', cursor: 'pointer',
-              fontWeight: 'bold', fontFamily: 'inherit',
-            }}
-          >
-            Add
-          </button>
+          <button className="btn" onClick={addCustomToken}>[ add ]</button>
         </div>
-        {customError && <p style={{ color: 'red', fontSize: '0.8rem', marginTop: '4px' }}>{customError}</p>}
+        {customError && (
+          <div className="status-line error">! {customError}</div>
+        )}
       </div>
 
-      <p style={{ marginTop: '1.5rem', fontSize: '0.72rem', color: '#bbb', textAlign: 'center' }}>
-        ⚠️ Your private key is never stored or transmitted. Swaps execute directly on-chain via Uniswap.
-      </p>
+      <div className="warn-box">
+        ⚠ your private key is never stored or transmitted. swaps execute directly
+        on-chain via uniswap.
+      </div>
     </div>
   );
 }
